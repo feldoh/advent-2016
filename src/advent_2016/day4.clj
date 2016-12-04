@@ -46,4 +46,14 @@
 
 (str "Part 1: " (apply + (map parseInt (remove nil? (map real-room? input)))))
 
-(run-tests)
+(with-test
+  (defn rotate [chr rot]
+    (let [infinite-alpha (cycle (map char (range (int \a) (int \z))))]
+      (first (drop rot (drop-while #(not (= chr %)) infinite-alpha)))))
+  (is (= \a (rotate \z 1)))
+  (is (= \b (rotate \a 1)))
+  (is (= \d (rotate \a 3)))
+  (is (= \c (rotate \z 3)))
+  (is (= \a (rotate \a 26))))
+
+  (run-tests)
