@@ -66,8 +66,62 @@
   (is (= nil (valid-ipv7? (nth samples 2))))
   (is (= (nth samples 3) (valid-ipv7? (nth samples 3)))))
 
-(run-tests)
-
 (def part1 (count (remove nil? (map valid-ipv7? input))))
 part1
 (println "Part 1: " part1)
+
+(def ssl-samples ["aba[bab]xyz" ;supports SSL (aba outside square brackets with corresponding bab within square brackets).
+                  "xyx[xyx]xyx" ;does not support SSL (xyx, but no corresponding yxy).
+                  "aaa[kek]eke" ;supports SSL (eke in supernet with corresponding kek in hypernet,the aaa sequence is not related, because the interior character must be different).
+                  "aaa[ack]eke[kek]" ; supports SSL via the eke/kek set
+                  "aaa[cackle]aca[kek]" ; supports SSL via the cac/aca set
+                  "zazbz[bzb]cdb"]) ;supports SSL (zaz has no corresponding aza, but zbz has a corresponding bzb, even though zaz and zbz overlap).
+
+(with-test
+  (defn extract-abas [chrs]
+    (loop [[first-chr & chr-seq] chrs
+           abas #{}]
+      (let [[second-chr third-chr & remaining-chrs] chr-seq
+            possible-aba (str first-chr second-chr third-chr)
+            new-abas (if (and (= first-chr third-chr)
+                              (not (= first-chr second-chr))
+                              (not (= second-chr third-chr)))
+                       (conj abas possible-aba)
+                       abas)]
+        (if (= (count chr-seq) 0)
+          new-abas
+          (recur chr-seq new-abas)))))
+  (is (= #{} (extract-abas "abba")))
+  (is (= #{} (extract-abas "bbb")))
+  (is (= #{} (extract-abas "abb")))
+  (is (= #{"aba"} (extract-abas "aba")))
+  (is (= #{"aba"} (extract-abas "aba]")))
+  (is (= #{"aba"} (extract-abas "[aba")))
+  (is (= #{"aba"} (extract-abas "[aba]")))
+  (is (= #{"aba" "bab"} (extract-abas "[ababa]")))
+  (is (= #{"aba" "bab"} (extract-abas "abab"))))
+
+(with-test
+  (defn ipv7-with-ssl? [ipv7] (let [hypernets (extract-hypernets ipv7)
+                                    supernets (extract-supernets ipv7)
+                                    supernet-abas (reduce #(into %1 %2) #{} (map extract-abas supernets))
+                                    supernet-possible-babs (map aba-to-bab supernet-abas)
+                                    hypernet-babs (reduce #(into %1 %2) #{} (map extract-abas hypernets))]
+                                (some hypernet-babs supernet-possible-babs)))
+  (is (= "bab" (ipv7-with-ssl? (first ssl-samples))))
+  (is (= nil (ipv7-with-ssl? (second ssl-samples))))
+  (is (= "kek" (ipv7-with-ssl? (nth ssl-samples 2))))
+  (is (= "kek" (ipv7-with-ssl? (nth ssl-samples 3))))
+  (is (= "cac" (ipv7-with-ssl? (nth ssl-samples 4))))
+  (is (= "bzb" (ipv7-with-ssl? (nth ssl-samples 5)))))
+
+(with-test
+  (defn aba-to-bab [[c1 c2 c3]] (str c2 c1 c2))
+  (is (= "aba" (aba-to-bab "bab"))))
+
+(run-tests)
+
+(def part2 (remove nil? (map ipv7-with-ssl? input)))
+part2
+(println "Part 2: " (count part2))
+
